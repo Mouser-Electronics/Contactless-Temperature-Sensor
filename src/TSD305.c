@@ -158,9 +158,7 @@ tsd305_status read_eeprom_float(uint8_t address, float *value) {
   uint16_t h_word = 0;
   uint16_t l_word = 0;
   tsd305_status status = tsd305_status_ok;
-  ieee754Union myUnion, myUnion2;
-  myUnion2.raw = 0xbb96bb99;
-
+  ieee754Union myUnion;
 
   //printf ("Read %d and %d\n", address, address+1);
 

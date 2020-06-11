@@ -8,6 +8,7 @@
 #ifndef DRIVERS_TE_CONNECTIVITY_TSD305_TSD305_H_
 #define DRIVERS_TE_CONNECTIVITY_TSD305_TSD305_H_
 
+#include "app_rtcc.h"
 
 typedef enum {
   tsd305_status_ok,
@@ -45,5 +46,6 @@ int32_t get_lut_at(uint8_t x, uint8_t y);
   tsd305_status conversion_and_read_adcs(uint32_t *adc_object,
                                               uint32_t *adc_ambient);
   tsd305_status read_eeprom(void);
+  void Delay (uint32_t dlyTicks);
 
 #endif /* DRIVERS_TE_CONNECTIVITY_TSD305_TSD305_H_ */

@@ -74,7 +74,13 @@ uint32_t historicalTemps[4] = {0,0,0,0};
 #define TEMPERATURE_DETAILS    1
 #define OUTPUT_FREQ_Hz (6000UL)
 
-#define WRIST_COMP 8  // Offset from wrist temp to internal temp
+#define WRIST_COMP 13  // Offset from wrist temp to internal temp
+#define OBJ_DETECT_THRESHOLD 29.5  // Degrees c to detect an object
+#define FEVER_TEMP 100  // temperature needed to trigger a fever notification
+#define NUM_READINGS_NEEDED 4
+#define TEMP_VARIATION_ALLOWED 1 // NUM_READINGS_NEEDED
+                                  // consecutive readings must be in this range
+                                  // to count ('F)
 
 /**************************************************************************//**
  * @brief Setup push buttons and GPIO.
@@ -167,20 +173,6 @@ void drawScreen(uint8_t app)
       if (longCount > 0)
       {
          longCount--;  // Count it down unti we get to 0
-         /*
-         CMU_ClockEnable(cmuClock_TIMER0, true);
-         if (((lockedTemp * 9) / 5 + 32 +13) > 100)
-         {
-            Delay(5000);
-         }
-         else
-         {
-            Delay(500);
-         }
-         CMU_ClockEnable(cmuClock_TIMER0, false);
-
-         longBeep = false;
-         */
       }
       else
       {
@@ -192,6 +184,10 @@ void drawScreen(uint8_t app)
       break;
   }
 }
+
+/**************************************************************************//**
+ * @brief  Set up PWM for the piezo buzzer
+ *****************************************************************************/
 
 void setupPWM(void)
 {
@@ -251,6 +247,9 @@ int main(void)
   // Initialize LED driver
   BSP_LedsInit();
 
+  GPIO_PinModeSet(gpioPortC, 0, gpioModePushPull, 1);
+  GPIO_PinModeSet(gpioPortC, 8, gpioModePushPull, 1);
+
   // Enable LCD without voltage boost, use LFRCO as LCD clock source
   SegmentLCD_Init(false);
 
@@ -309,12 +308,15 @@ int main(void)
       historicalTemps[2] = historicalTemps[1];
       historicalTemps[1] = historicalTemps[0];
       historicalTemps[0] = objTemp;
-      if (objTemp > 31)  // in celcius - ~90 f
+      if (objTemp > OBJ_DETECT_THRESHOLD)  // in celcius - ~90 f
       {
          BSP_LedToggle(0);
-         if (stableTempCount < 4)
+         if (stableTempCount < NUM_READINGS_NEEDED)
          {
+            GPIO_PinModeSet(gpioPortC, 0, gpioModePushPull, 0);
+            GPIO_PinModeSet(gpioPortC, 8, gpioModePushPull, 0);
             // Waiting for a stable measurement
+            // Do a couple of quick beeps to show progress
             CMU_ClockEnable(cmuClock_TIMER0, true);
             Delay(20);
             CMU_ClockEnable(cmuClock_TIMER0, false);
@@ -324,23 +326,28 @@ int main(void)
             displayWait = false;
 
             // wait for stabilization of 1 second
-            if (abs(historicalTemps[0] - historicalTemps[1] < 2) &&
-                  abs(historicalTemps[0] - historicalTemps[2] < 2) &&
-                  abs(historicalTemps[0] - historicalTemps[3] < 2))
+            if (abs(historicalTemps[0] - historicalTemps[1] < TEMP_VARIATION_ALLOWED) &&
+                  abs(historicalTemps[0] - historicalTemps[2] < TEMP_VARIATION_ALLOWED) &&
+                  abs(historicalTemps[0] - historicalTemps[3] < TEMP_VARIATION_ALLOWED))
             {
                stableTempCount++;
-               if (stableTempCount >= 4)
+               if (stableTempCount >= NUM_READINGS_NEEDED)
                {
+
                   lockedTemp = objTemp;
                   longBeep = true;
                   CMU_ClockEnable(cmuClock_TIMER0, true); // Turn on the beep
-                  if (((lockedTemp * 9) / 5 + 32 + WRIST_COMP) > 100)
+                  if (((lockedTemp * 9) / 5 + 32 + WRIST_COMP) > FEVER_TEMP)
                   {
-                     longCount = 20;
+                     GPIO_PinModeSet(gpioPortC, 0, gpioModePushPull, 1);
+                     GPIO_PinModeSet(gpioPortC, 8, gpioModePushPull, 0);
+                     longCount = 20;  // how long to buzz for
                   }
                   else
                   {
                      longCount = 2;
+                     GPIO_PinModeSet(gpioPortC, 0, gpioModePushPull, 0);
+                     GPIO_PinModeSet(gpioPortC, 8, gpioModePushPull, 1);
                   }
                }
             }
@@ -369,7 +376,7 @@ int main(void)
             }
          }
       }
-      else
+      else  // Temperature is below object detect, so nothing in range
       {
          if (tempDisplayedCount > 0)
          {
@@ -391,6 +398,8 @@ int main(void)
          else
          {
             // Done displaying the stable temperature
+            GPIO_PinModeSet(gpioPortC, 0, gpioModePushPull, 1);
+            GPIO_PinModeSet(gpioPortC, 8, gpioModePushPull, 1);
             BSP_LedClear(0);
             displayTemp = false;
             displayMeasure = false;
