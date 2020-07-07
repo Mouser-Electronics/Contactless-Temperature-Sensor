@@ -75,8 +75,8 @@ uint32_t historicalTemps[4] = {0,0,0,0};
 #define OUTPUT_FREQ_Hz (6000UL)
 
 #define WRIST_COMP 13  // Offset from wrist temp to internal temp
-#define OBJ_DETECT_THRESHOLD 29.5  // Degrees c to detect an object
-#define FEVER_TEMP 100  // temperature needed to trigger a fever notification
+#define OBJ_DETECT_THRESHOLD 28.5  // Degrees c to detect an object
+#define FEVER_TEMP 100.4  // temperature needed to trigger a fever notification
 #define NUM_READINGS_NEEDED 4
 #define TEMP_VARIATION_ALLOWED 1 // NUM_READINGS_NEEDED
                                   // consecutive readings must be in this range
@@ -160,7 +160,7 @@ void drawScreen(uint8_t app)
       sprintf(str, "T %.2f", ((lockedTemp * 9) / 5 + 32 + WRIST_COMP));  // add 10 ' for wrist
       str[8] = '\0';                            // Truncate to display size.
       if (displayWait)
-         SegmentLCD_Write("WAITING");
+         SegmentLCD_Write("READY");
       else if (displayMeasure)
          SegmentLCD_Write("MEASURE");
       else
@@ -230,6 +230,7 @@ int main(void)
   CMU_ClockSelectSet(cmuClock_LFE, cmuSelect_LFXO);
   // Enable access to LE peripheral registers.
   CMU_ClockEnable(cmuClock_CORELE, true);
+  appRhtCelsius = false;
 
   // Setup backup mode.
   // Restore values stored in retention registers if we are waking up from a backup event.
