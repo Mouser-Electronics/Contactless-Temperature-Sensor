@@ -35,7 +35,7 @@
 #include "app_csen.h"
 #include "app_rtcc.h"
 #include "app_sensor.h"
-#include "tsd305.h"
+#include "TSD305.h"
 
 // Global state variables
 static uint8_t currentApp = 0;

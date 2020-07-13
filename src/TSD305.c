@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include "tsd305.h"
+#include "TSD305.h"
 #include "i2cspm.h"
 
 // TSD305 device address
