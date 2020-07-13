@@ -1,9 +1,31 @@
-/*
- * TSD305.c
+/**************************************************************************//**
+MIT License
+
+Copyright (c) 2016 TE Connectivity
+Modified work Copyright 2020 Connected Development, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
  *
- *  Created on: May 13, 2020
- *      Author: djhoo
- */
+ *******************************************************************************
+ * @file
+ * @brief Implements TE TSD305 Thermopile Drivers.
+ ******************************************************************************/
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -160,8 +182,6 @@ tsd305_status read_eeprom_float(uint8_t address, float *value) {
   tsd305_status status = tsd305_status_ok;
   ieee754Union myUnion;
 
-  //printf ("Read %d and %d\n", address, address+1);
-
   status = read_eeprom_coeff(address, &h_word);
   if (status != tsd305_status_ok) return status;
 
@@ -174,9 +194,6 @@ tsd305_status read_eeprom_float(uint8_t address, float *value) {
   myUnion.raw = finalNum;
 
   *value = myUnion.floatVal;
-  //printf ("hex is 0x%8x: %f\n", myUnion.raw,myUnion.floatVal );
-  //printf ("ref is 0x%8x: %f\n", myUnion2.raw,myUnion2.floatVal );
-  //printf ("Float is %f\n", *value);
 
   Delay(20);
 
@@ -365,10 +382,7 @@ read_temperature_and_object_temperature(float *temperature,
 
   float ambFloat = (float) adc_ambient;
   float objFloat = (float) adc_object;
-  //printf ("ambFloat %f\n", ambFloat);
   float t_sens = ((ambFloat)/16777216 * 105) - 20; // sensor temp
-
-
 
   float TCF = 1 + ((t_sens - coeff.refTemp) * coeff.tempCoeff); //Temperature Correction Factor
 

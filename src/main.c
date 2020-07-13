@@ -3,7 +3,8 @@
  * @brief Demo example for SLSTK3301A
  *******************************************************************************
  * # License
- * <b>Copyright 2018 Silicon Laboratories Inc. www.silabs.com</b>
+ * <b>Copyright 2018 Silicon Laboratories Inc. www.silabs.com
+ * Modified work Copyright 2020 Connected Development, Inc. </b>
  *******************************************************************************
  *
  * The licensor of this software is Silicon Laboratories Inc. Your use of this
@@ -105,7 +106,39 @@ static void gpioSetup(void)
   GPIO_PinModeSet(gpioPortC, 12, gpioModePushPull, 1);
 }
 
-/**************************************************************************//**
+/******************************************************************************
+ * @brief Set the green led on/ off
+ *****************************************************************************/
+
+static void setRedLed(bool on)
+{
+	if (on == true)
+	{
+		GPIO_PinModeSet(gpioPortC, 0, gpioModePushPull, 1);
+	}
+	else
+	{
+		GPIO_PinModeSet(gpioPortC, 0, gpioModePushPull, 0);
+	}
+}
+
+/******************************************************************************
+ * @brief Set the red led on/ off
+ *****************************************************************************/
+
+static void setGreenLed(bool on)
+{
+	if (on == true)
+	{
+		GPIO_PinModeSet(gpioPortC, 8, gpioModePushPull, 1);
+	}
+	else
+	{
+		GPIO_PinModeSet(gpioPortC, 8, gpioModePushPull, 0);
+	}
+}
+
+/******************************************************************************
  * @brief Setup CRYOTIMER to generate an interrupt every second.
  *****************************************************************************/
 static void cryotimerSetup(void)
@@ -138,6 +171,7 @@ void drawScreen(uint8_t app)
   char str[13];
 
   switch (app) {
+    // Show raw temperature as it comes in (for debug purposes)
     case TEMPERATURE_DETAILS:
        if (appRhtCelsius)
        {
@@ -156,8 +190,9 @@ void drawScreen(uint8_t app)
        SegmentLCD_Symbol(LCD_SYMBOL_C18, 1);
       break;
 
+    // The "production" demo -
     case TEMPERATURE_DEMO:
-      sprintf(str, "T %.2f", ((lockedTemp * 9) / 5 + 32 + WRIST_COMP));  // add 10 ' for wrist
+      sprintf(str, "T %.2f", ((lockedTemp * 9) / 5 + 32 + WRIST_COMP));  // add comp for wrist
       str[8] = '\0';                            // Truncate to display size.
       if (displayWait)
          SegmentLCD_Write("READY");
@@ -172,7 +207,7 @@ void drawScreen(uint8_t app)
 
       if (longCount > 0)
       {
-         longCount--;  // Count it down unti we get to 0
+         longCount--;  // Count it down until we get to 0
       }
       else
       {
@@ -248,8 +283,9 @@ int main(void)
   // Initialize LED driver
   BSP_LedsInit();
 
-  GPIO_PinModeSet(gpioPortC, 0, gpioModePushPull, 1);
-  GPIO_PinModeSet(gpioPortC, 8, gpioModePushPull, 1);
+  // Initialize the Red and Green LEDs
+  setGreenLed (true);
+  setRedLed (true);
 
   // Enable LCD without voltage boost, use LFRCO as LCD clock source
   SegmentLCD_Init(false);
@@ -262,14 +298,7 @@ int main(void)
 
   setupPWM();  // for the piezo buzzer output
 
-  //TSD305I2CBegin();
-
-  // Inititate and calibrate touch slider
-  // It is important that the slider is not touched during calibration
-  //setupCSEN();
-
   currentApp = TEMPERATURE_DEMO;
-
 
   // Watchdog Initialize settings
 
@@ -298,10 +327,8 @@ int main(void)
     if (cryoPeriod) {
       WDOG_Feed();
       cryoPeriod = false;
-      // Read sensor data from I2C sensors
-      //sensorReadHumTemp(&appRhtRhData, &appRhtTempData);
-      //sensorReadHallEffect(&appHallField);
-      //buMeasVdd(&appBuVoltage, &appBuAvddVoltage);
+
+      // Read temperature data
       read_temperature_and_object_temperature(&ambTemp, &objTemp);
       appRhtTempData = objTemp;
 
@@ -309,13 +336,16 @@ int main(void)
       historicalTemps[2] = historicalTemps[1];
       historicalTemps[1] = historicalTemps[0];
       historicalTemps[0] = objTemp;
+
+      // See if an object is close to the sensor (temperature based)
       if (objTemp > OBJ_DETECT_THRESHOLD)  // in celcius - ~90 f
       {
          BSP_LedToggle(0);
          if (stableTempCount < NUM_READINGS_NEEDED)
          {
-            GPIO_PinModeSet(gpioPortC, 0, gpioModePushPull, 0);
-            GPIO_PinModeSet(gpioPortC, 8, gpioModePushPull, 0);
+        	setGreenLed (false);
+        	setRedLed (false);
+
             // Waiting for a stable measurement
             // Do a couple of quick beeps to show progress
             CMU_ClockEnable(cmuClock_TIMER0, true);
@@ -332,34 +362,41 @@ int main(void)
                   abs(historicalTemps[0] - historicalTemps[3] < TEMP_VARIATION_ALLOWED))
             {
                stableTempCount++;
+
+               // If enough stable measurements in a row received, lock the temperature
+               // And display the results
                if (stableTempCount >= NUM_READINGS_NEEDED)
                {
-
                   lockedTemp = objTemp;
                   longBeep = true;
                   CMU_ClockEnable(cmuClock_TIMER0, true); // Turn on the beep
                   if (((lockedTemp * 9) / 5 + 32 + WRIST_COMP) > FEVER_TEMP)
                   {
-                     GPIO_PinModeSet(gpioPortC, 0, gpioModePushPull, 1);
-                     GPIO_PinModeSet(gpioPortC, 8, gpioModePushPull, 0);
+                	 // FEVER!  Red LED, long buzz
+                	 setGreenLed (false);
+                	 setRedLed (true);
                      longCount = 20;  // how long to buzz for
                   }
                   else
                   {
-                     longCount = 2;
-                     GPIO_PinModeSet(gpioPortC, 0, gpioModePushPull, 0);
-                     GPIO_PinModeSet(gpioPortC, 8, gpioModePushPull, 1);
+                	 // Normal temperature.  Green LED, short buzz
+                 	 setGreenLed (true);
+                 	 setRedLed (false);
+                     longCount = 2;  // how long to buzz for
                   }
                }
             }
             else
             {
+               // The temperature has not stabilized
                stableTempCount = 0;
             }
          }
          else
          {
-            // Stable measurement achieved
+            // Stable measurement achieved previously
+        	// So keep displaying this until the display count
+        	// expires
             BSP_LedSet(0);
             displayTemp = true;
             displayMeasure = false;
@@ -369,6 +406,8 @@ int main(void)
 
             if (tempDisplayedCount > 20)
             {
+               // Done displaying - go back to idle
+               // to wait for the next measurement
                stableTempCount = 0;
                tempDisplayedCount = 0;
                displayTemp = false;
@@ -399,18 +438,20 @@ int main(void)
          else
          {
             // Done displaying the stable temperature
-            GPIO_PinModeSet(gpioPortC, 0, gpioModePushPull, 1);
-            GPIO_PinModeSet(gpioPortC, 8, gpioModePushPull, 1);
+        	// Go back to idle, await next measurement
+        	setGreenLed (true);
+        	setRedLed (true);
+
             BSP_LedClear(0);
             displayTemp = false;
             displayMeasure = false;
             displayWait = true;
          }
       }
-
     }
 
     // Push buttons event handling
+    // Allow user to switch between the demo and a debug screen
     if (btn0Pressed) {
       // Next application
       currentApp++;
@@ -423,6 +464,7 @@ int main(void)
       SegmentLCD_AllOff();
     }
 
+    // Allow user to switch between c and f if showing debug data
     if (btn1Pressed) {
       switch (currentApp) {
         case TEMPERATURE_DETAILS:
