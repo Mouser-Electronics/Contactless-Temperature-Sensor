@@ -1,3 +1,5 @@
+![Mouser Electronics](https://www.mouser.com/images/microsites/build-contactless-temperature-sensor-theme-a.jpg)
+
 # Contactless-Temperature-Sensor
 Intermediate-level open source contactless temperature sensor project designed for use in hospitals, warehouses, retail, offices, and more.
 
